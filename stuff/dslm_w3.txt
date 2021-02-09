@@ -1,0 +1,47 @@
+$
+\frac{dp}{dt} =-\frac{\partial\mathcal{H}}{\partial q}
+\space,\space
+\frac{dq}{dt} =\frac{\partial\mathcal{H}}{\partial p}
+$
+<br>
+where $\mathcal{H}=\mathcal{H}(q,p,t)$
+<br><br>
+$\mathcal{H}: (Q \times P \times T) \rightarrow E$
+<br>
+$E$ often corresponds to the total energy of a system and seeing as Energy is directionless makes 
+$E$ a subset of $\mathbb{R}$
+<br>
+<br>
+$(q,p)$ is a coordinate in some frame of reference
+, $(q,p) \in S \subseteq Q \times P$
+<br>
+And $t$ denotes time where $t \in T \subseteq \mathbb{R}$
+<br>
+<br>
+1. The $\frac{df}{dy} / \frac{\partial f}{\partial y}$ 
+syntax is is notation for a transform of the function f where<br>
+$\frac{d}{dy} :: (Y \rightarrow \mathbb{R}) \rightarrow (Y \rightarrow \mathbb{R})$ where $y \in Y$<br>
+$\frac{\partial}{\partial y} :: 
+((X \times Y \times ..) \rightarrow \mathbb{R}) \rightarrow 
+((X \times Y \times ..) \rightarrow \mathbb{R})$ where $(x \in X),(y \in Y),..$<br>
+<br>
+2. Taking the (partial) dervivative of a function does not change its type$\implies$<br>
+$\frac{\partial\mathcal{H}}{\partial q}::(Q \times P \times T) \rightarrow E$<br>
+$\frac{\partial\mathcal{H}}{\partial p}::(Q \times P \times T) \rightarrow E$<br>
+<br>
+3. and since $(=)::a \rightarrow a \rightarrow \mathbb{B}$ it follows that<br>
+$\frac{dp}{dt} :: (Q \times P \times T) \rightarrow E$<br>
+$\frac{dq}{dt} :: (Q \times P \times T) \rightarrow E$<br>
+<br>
+But this is bad news since we stated
+$\frac{d}{dt} :: (T \rightarrow \mathbb{R}) \rightarrow (T \rightarrow \mathbb{R})$
+but $(Q \times P \times T) \nsubseteq T$ which means there is some unwritted rules. Namely that submitting arguments not matching a symbol in the notation should just be ignored
+<br>
+<br>
+It makes sense solving this by adding a function to the left side which ignores any argument but $t$ here called $\tau$<br>
+$\tau :: (Q \times P \times T) \rightarrow T$<br>
+$\tau(\_,\_,t) = t$<br><br>
+
+$\frac{dp}{dt} =-\frac{\partial\mathcal{H}}{\partial q} \iff (D_t$ $p) \circ \tau =-D_1$ $\mathcal{H}$<br>
+$\frac{dq}{dt} =\frac{\partial\mathcal{H}}{\partial p} \iff (D_t$ $q) \circ \tau =D_2$ $\mathcal{H}$<br>
+$\lambda (q,p,t) \rightarrow (D_t$ $q) \circ \tau$ $(q,p,t)=D_2$ $\mathcal{H}$ $(q,p,t)$<br>
