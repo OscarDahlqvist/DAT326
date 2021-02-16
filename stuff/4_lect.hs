@@ -10,13 +10,13 @@ data Prop = Con Bool
  
 {-
 H2 :: (a->b) -> (a->a->a) -> (b->b->b) -> Prop
-H2 h f1 f2 = ∀x,y∈A h(f1 x y) == f2 (h x) (h y)
+H2 h f1 f2 = ∀x,y∈A h(f1 x y) <==> f2 (h x) (h y)
 
 H1 :: (a->b) -> (a->a) -> (b->b) -> Prop
-H1 h f1 f2 = ∀x∈A h(f1 x) == f2 (h x)
+H1 h f1 f2 = ∀x∈A h(f1 x) <==> f2 (h x)
 
-H0 :: (a->b) -> (a->a) -> (b->b) -> Prop
-H0 h E e = h E == e
+H0 :: (a->b) -> a -> b -> Prop
+H0 h E e = h E <==> e
 
 ex
 ∃f H₂(odd,+,f)?
