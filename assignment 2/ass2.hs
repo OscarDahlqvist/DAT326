@@ -1,6 +1,8 @@
 {-# LANGUAGE GADTs, FlexibleContexts, FlexibleInstances, TypeSynonymInstances, StandaloneDeriving #-}
 import Data.List
 import Test.QuickCheck
+import Debug.Trace
+
 
 -- ============== 1a ============== --
 
@@ -36,19 +38,19 @@ derive :: FunExp a -> FunExp a
 derive = error "todo"
 
 data FunExp a where
- Zero   :: FunExp a --bad
- One    :: FunExp a --bad
- Con    :: (Transcendental a) => a -> FunExp a
- FunX   :: FunExp a
- Add    :: FunExp a -> FunExp a -> FunExp a
- Mul    :: FunExp a -> FunExp a -> FunExp a
- Negate :: FunExp a -> FunExp a
- Recip  :: FunExp a -> FunExp a
- Root   :: FunExp a -> FunExp a
- Pi     :: FunExp a
- Sin    :: FunExp a -> FunExp a
- Cos    :: FunExp a -> FunExp a
- Exp    :: FunExp a -> FunExp a
+    Zero   :: FunExp a --bad
+    One    :: FunExp a --bad
+    Con    :: (Transcendental a) => a -> FunExp a
+    FunX   :: FunExp a
+    Add    :: FunExp a -> FunExp a -> FunExp a
+    Mul    :: FunExp a -> FunExp a -> FunExp a
+    Negate :: FunExp a -> FunExp a
+    Recip  :: FunExp a -> FunExp a
+    Root   :: FunExp a -> FunExp a
+    Pi     :: FunExp a
+    Sin    :: FunExp a -> FunExp a
+    Cos    :: FunExp a -> FunExp a
+    Exp    :: FunExp a -> FunExp a
  
 deriving instance Show (FunExp REAL)
  
@@ -97,65 +99,65 @@ type TriFun a = Tri (a -> a)    -- (a->a, a->a, a->a)
 type FunTri a = a -> Tri a      -- a -> (a,a,a)
 
 class Additive a where
- zero   :: a
- add    :: a -> a -> a
+    zero   :: a
+    add    :: a -> a -> a
 
 class Multiplicative a where
- one    :: a
- mul    :: a -> a -> a
+    one    :: a
+    mul    :: a -> a -> a
  
 class Additive a => AddGroup a where
- negate :: a -> a
+    negate :: a -> a
  
 class Multiplicative a => MulGroup a where
- recip  :: a -> a
+    recip  :: a -> a
  
 class (MulGroup a, AddGroup a) => Algebraic a where
- root   :: a -> a
+    root   :: a -> a
  
 class Algebraic a => Transcendental a where
- pi     :: a
- sin    :: a -> a
- cos    :: a -> a
- exp    :: a -> a
+    pi     :: a
+    sin    :: a -> a
+    cos    :: a -> a
+    exp    :: a -> a
  
 --dd :: Transcendental a => FunExp -> (Tri FunExp)
 
 instance Additive a => Additive (FunExp a) where
- zero   = Zero
- add    = Add
+    zero   = Zero
+    add    = Add
 instance Multiplicative a => Multiplicative (FunExp a) where
- one    = One
- mul    = Mul
+    one    = One
+    mul    = Mul
 instance AddGroup a => AddGroup (FunExp a) where
- negate = Negate
+    negate = Negate
 instance MulGroup a => MulGroup (FunExp a) where
- recip  = Recip
+    recip  = Recip
 instance Algebraic a => Algebraic (FunExp a) where
- root   = Root
+    root   = Root
 instance Transcendental a => Transcendental (FunExp a) where
- pi     = Pi
- sin    = Sin
- cos    = Cos
- exp    = Exp
+    pi     = Pi
+    sin    = Sin
+    cos    = Cos
+    exp    = Exp
  
 instance Additive REAL where
- zero   = 0
- add    = (+)
+    zero   = 0
+    add    = (+)
 instance Multiplicative REAL where
- one    = 1
- mul    = (*)
+    one    = 1
+    mul    = (*)
 instance AddGroup REAL where
- negate = (zero-)
+    negate = (zero-)
 instance MulGroup REAL where
- recip  = (one/)
+    recip  = (one/)
 instance Algebraic REAL where
- root   = sqrt
+    root   = sqrt
 instance Transcendental REAL where
- pi     = Prelude.pi
- sin    = Prelude.sin
- cos    = Prelude.cos
- exp    = Prelude.exp
+    pi     = Prelude.pi
+    sin    = Prelude.sin
+    cos    = Prelude.cos
+    exp    = Prelude.exp
 
 d :: Transcendental a => FunExp a -> FunExp a
 d (Con _)       = zero
@@ -176,18 +178,130 @@ dd = d.d
 
 evalDD :: Transcendental a => FunExp a -> FunTri a
 evalDD expr a = (f a, f' a, f'' a)
- where 
-  f   = eval (expr)
-  f'  = eval (d expr)
-  f'' = eval (dd expr)
+    where 
+        f   = eval (expr)
+        f'  = eval (d expr)
+        f'' = eval (dd expr)
 
 -- ============== 1c ============== --
 
---step one, surrender
+{-
+  To prove that evalDD is a homomophism in the case of multiplication we need to prove the existance of
+  a funtion:
+
+  muld :: Transcendental a => (a->a,a->a,a->a) -> (a->a,a->a,a->a) -> (a->a,a->a,a->a),
+  
+  such that
+
+  H2 = evalDD (mul f g) == muld (evalDD f) (evalDD g).
+
+  Using the notation f' = d f, f'' = dd f (mutatis mutandis for g), add = +, mul = *, (...)*(...)= (...)*(...)
+  we prove this by directly expanding the definition of our evalDD funtion:
+
+  evalDD (mul f g)  = (eval f*g, eval (f*g)', eval (f*g)'') = [one iter of product rule] =
+  = (eval f*g, eval (f*g' + f'*g), eval (f*g' + f'*g)') = [derivative is linear and second iter of prod rule] =
+  = (..., eval ((f*g')(f'*g)' + (f*g')'(f'*g)) = (..., eval ((f*g')(f'*g' + f''*g)
+                                                 + (f*g'' + f'*g')(f'*g)) =
+  = (..., eval (f*f'*g'*g' + f*f''*g'*g +f*f'*g''*g + f'*f'*g'*g)).
+
+  This shows that we can construct a function muld such that H2 is satisfied. Such a function
+  would be defined as:
+
+  muld f g = (f*g, f*g' + f'*g, f*f'*g'*g' + f*f''*g'*g +f*f'*g''*g + f'*f'*g'*g)
+    where f   = fst f
+          f'  = snd f
+          f'' = trd f
+          g   = fst g
+          g'  = snd g
+          g'' = trd g
+  QED
+-}
 
 -- ============== 2a ============== --
 
 newton :: (REAL -> REAL) -> REAL -> REAL -> REAL
-newton f ep x = if abs (f x) < ep
-                    then x
+newton f ep x = 
+    if (abs fx) < ep
+        then x
+    else if abs fx' /=  0
+        then newton f ep next
+        else newton f ep (x+ep)
+    where 
+        fx  = f x
+        fx' = error "undefined"
+        next = x - (fx/fx')
+        
+newtonF :: FunExp REAL -> REAL -> REAL -> REAL
+newtonF f ep x = 
+    if (abs fx) < ep
+        then x
+        else if abs fx' /=  0
+            then newtonF f ep next
+            else newtonF f ep (x+ep)
+    where 
+        fx  = eval f x
+        fx' = eval (d f) x
+        next = x - (fx/fx')
+
+newtonTri :: (Tri REAL -> Tri REAL) -> REAL -> REAL -> REAL
+newtonTri f ep x = 
+    if (abs fx) < ep
+        then x
+    else if abs fx' /=  0
+        then newtonTri f ep next
+        else newtonTri f ep (x+ep)
+    where 
+        (fx,fx',fx'') = f (x,x,x)
+        next = x - (fx/fx')
+        
+toTriSem :: FunExp REAL -> (Tri REAL -> Tri REAL)
+toTriSem expr = help
+    where help (a,b,c) = (eval expr a, eval (d expr) b, eval (dd expr) c)
+
+--newtonTri (toTriSem (Cos FunX)) 0.01 1
+--newtonF (Cos FunX) 0.001 1
+
+-- ============== 2b ============== --
+
+test0 :: Tri REAL -> Tri REAL
+test0 (a,b,c) = (a^2,   2*b,2)
+test1 (a,b,c) = (a^2-1, 2*b,2)
+test2 (a,b,c) = (Prelude.sin a, Prelude.cos b, -Prelude.sin c)
+
+
+test3ex :: Tri REAL -> Tri REAL
+test3ex = test3 1 1
+
+test3 :: REAL -> REAL -> Tri REAL -> Tri REAL
+test3 n x (y1,y2,y3) = (y1**n - x, n*y2**(n-1) - x, n*(n-1)*y3**(n-2) - x)
+
+--test0 x = x^2                   -- one (double) zero, in 0
+--test1 x = x^2 − 1               -- two zeros, in −1 and 1
+--test2 = Prelude.sin             -- many, many zeros (n ∗ π)
+--test3 n x y = y^n − constTri x  -- test3 n x specifies the nth root of x
+--    where constTri x = \_ -> (x,x,x)
+
+s0 = map (newtonTri test0 0.001) [-2.0, -1.5 .. 2.0]
+s1 = map (newtonTri test1 0.001) [-2.0, -1.5 .. 2.0]
+s2 = map (newtonTri test2 0.001) [-2.0, -1.5 .. 2.0]
+s3 n x = map (newtonTri (test3 n x) 0.001) [-2.0, -1.5 .. 2.0]
+        
+-- ============== 3a ============== --        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+(>>>) :: a -> String -> a
+(>>>) a str = (trace str a)
+debugged :: Show a => a -> a
+debugged a = (trace (">>>"++show(a)) a)
+
 
