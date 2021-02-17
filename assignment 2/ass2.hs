@@ -191,14 +191,19 @@ class Algebraic a => Transcendental a where
  
 --dd :: Transcendental a => FunExp -> (Tri FunExp)
 
-instance Transcendental FunExp where
+instance Additive FunExp where
  zero   = Con 0
  add    = Add
+instance Multiplicative FunExp where
  one    = Con 1
  mul    = Mul
+instance AddGroup FunExp where
  negate = Negate
+instance MulGroup FunExp where
  recip  = Recip
+instance Algebraic FunExp where
  root   = Root
+instance Transcendental FunExp where
  π      = Pi
  sin    = Sin
  cos    = Cos
@@ -217,10 +222,15 @@ d (Sin a)       = (Cos a) `Mul` (d a)
 d (Cos a)       = (Negate $ Sin a) `Mul` (d a)
 d (Exp a)       = (Exp a) `Mul` (d a)
 
+dd :: FunExp -> FunExp
 dd = d.d
 
 evalDD :: Transcendental a => FunExp -> (a -> Tri a)
-evalDD expr = \a -> (expr a, (d expr) a, (dd expr) a)
+evalDD expr = \a -> (f a, f' a, f'' a)
+ where 
+  f   = eval (expr)
+  f'  = eval (d expr)
+  f'' = eval (dd expr)
 
 {- Con    :: REAL -> FunExp
  FunX   :: FunExp
