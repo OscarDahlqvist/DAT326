@@ -1,6 +1,5 @@
 {-# LANGUAGE GADTs, FlexibleContexts, FlexibleInstances, TypeSynonymInstances, StandaloneDeriving #-}
 import Data.List
-import Test.QuickCheck
 import Debug.Trace
 
 
@@ -266,7 +265,7 @@ toTriSem expr = help
 test0 :: Tri REAL -> Tri REAL
 test0 (a,b,c) = (a^2,   2*b,2)
 test1 (a,b,c) = (a^2-1, 2*b,2)
-test2 (a,b,c) = (Prelude.sin a, Prelude.cos b, -Prelude.sin c)
+test2 (a,b,c) = (Prelude.sin a, Prelude.cos b, 0-(Prelude.sin c))
 
 
 test3ex :: Tri REAL -> Tri REAL
@@ -286,22 +285,35 @@ s1 = map (newtonTri test1 0.001) [-2.0, -1.5 .. 2.0]
 s2 = map (newtonTri test2 0.001) [-2.0, -1.5 .. 2.0]
 s3 n x = map (newtonTri (test3 n x) 0.001) [-2.0, -1.5 .. 2.0]
         
--- ============== 3a ============== --        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
+-- ============== 3 ============== --        
+
+data Result where 
+    Maxima :: REAL -> Result
+    Minima :: REAL -> Result
+    Dunno  :: REAL -> Result
+    deriving Show
+    
+optim :: (Tri REAL -> Tri REAL) -> REAL -> REAL -> Result
+optim f ep x
+ | fx'' < 0  = Maxima ntr
+ | fx'' > 0  = Minima ntr
+ | otherwise = Dunno ntr >>> show fx''
+    where 
+        ntr = newtonTri helper ep x
+        (fx,fx',fx'') = f (ntr, ntr, ntr)
+        helper (a,b,c) = (fb', fc'', error "undefined")
+            where (fa,fb',fc'') = f (a,b,c)
+
+
+
+
+
+
+
+
+{-
 (>>>) :: a -> String -> a
 (>>>) a str = (trace str a)
 debugged :: Show a => a -> a
 debugged a = (trace (">>>"++show(a)) a)
-
-
+-}
