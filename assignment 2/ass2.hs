@@ -1,100 +1,11 @@
-{-# LANGUAGE GADTs #-}
+{-# LANGUAGE GADTs, FlexibleContexts, FlexibleInstances, TypeSynonymInstances #-}
 import Data.List
 import Test.QuickCheck
 
-{-
-type REAL = Double
-type S = REAL -> REAL
-newtype Bi a = Bi (a, a)
-
-data F where
-  A :: F -> F -> F
-  M :: F -> F -> F
-  X :: F
-  C :: REAL -> F
- deriving Show
- 
--- ================= --
--- type Syntax = F
--- type Semantic = S
-
-eval :: F -> S
-eval (A f g) = oadd (eval f) (eval g)
-eval (M f g) = omul (eval f) (eval g)
-eval X       = id
-eval (C c)   = const c
-
-oadd, omul :: S -> S -> S
-oadd f g = \x -> f x + g x
-omul f g = \x -> f x * g x
-
---cant be defined sice der :: F a -> Bi (F a)
---eval' = eval.der
-
---eval'' = eval.der.der
---alt: eval''= eval'.der
-
-
-der :: F -> Bi F
-der (A f g)   = addder (der f) (der g)
-der (M f g)   = mulder (der f) (der g)
-der X         = xder
-der (C c)     = cder c
-
-derSnd = extractDer.der
- where extractDer (Bi (f,f')) = f'
-
-xder :: Bi F
-xder = Bi (X, C 1)
-
-cder :: REAL -> Bi F
-cder c = Bi (C c, C 0)
-
-addder, mulder :: Bi F -> Bi F -> Bi F
-addder (Bi (f, f')) (Bi (g, g')) = Bi (A f g, A f' g')
-mulder (Bi (f, f')) (Bi (g, g')) = Bi (M f g, A (M f' g) (M f g'))
-
-{-
-class Additive a where
- zero   :: a
- add    :: a -> a -> a
-
-class Multiplicative a where
- one    :: a
- mul    :: a -> a -> a
- 
-class Additive a => AddGroup a where
- negate    :: a -> a
- 
-class (AddGroup a, Multiplicative a) => Ring a
--}
-
-class Ring a where
- zero   :: a
- add    :: a -> a -> a
- one    :: a
- mul    :: a -> a -> a
- negate    :: a -> a
-
-instance Ring FunExp where 
- zero   = Const 0
- add    = (`Add`)
- one    = Const 1
- mul    = (`Mul`)
- negate    = Negate
-
-
-
-
-{-
-refefefef
--}
--}
-
 --1a
-{-# LANGUAGE GADTs #-}
 
-import Prelude hiding (recip,negate)
+import qualified Prelude (sin,cos,exp)
+import Prelude hiding (recip,negate,exp,sin,cos)
 
 type REAL = Double
 
@@ -208,24 +119,42 @@ instance Transcendental FunExp where
  sin    = Sin
  cos    = Cos
  exp    = Exp
+ 
+instance Additive REAL where
+ zero   = 0
+ add    = (+)
+instance Multiplicative REAL where
+ one    = 1
+ mul    = (*)
+instance AddGroup REAL where
+ negate = (zero-)
+instance MulGroup REAL where
+ recip  = (one/)
+instance Algebraic REAL where
+ root   = sqrt
+instance Transcendental REAL where
+ π      = pi
+ sin    = Prelude.sin
+ cos    = Prelude.cos
+ exp    = Prelude.exp
 
 d :: FunExp -> FunExp
-d (Con _)       = Con 0
-d (FunX)        = Con 1
-d (Add a b)     = Add (d a) (d b)
-d (Mul a b)     = Add (a `Mul` d b) (d a `Mul` b)
-d (Negate a)    = Negate (d a)
-d (Recip a)     = (Negate $ Recip (a `Mul` a)) `Mul` (d a)      --1/f(x) = -¹/f(x)² * f'(x)
-d (Root a)      = (Recip $ (Root a `Mul` Con 2)) `Mul` (d a)    --f(x)¹ᐟ² = ⁻¹/(2f(x)) * f'(x)
-d (Pi)          = Con 0
-d (Sin a)       = (Cos a) `Mul` (d a)
-d (Cos a)       = (Negate $ Sin a) `Mul` (d a)
-d (Exp a)       = (Exp a) `Mul` (d a)
+d (Con _)       = zero
+d (FunX)        = one
+d (Add a b)     = add (d a) (d b)
+d (Mul a b)     = add (a `mul` d b) (d a `mul` b)
+d (Negate a)    = negate (d a)
+d (Recip a)     = (negate $ recip (a `mul` a)) `mul` (d a)      --1/f(x) = -¹/f(x)² * f'(x)
+d (Root a)      = (recip $ (root a `mul` (one `add` one))) `mul` (d a)    --f(x)¹ᐟ² = ⁻¹/(2f(x)) * f'(x)
+d (Pi)          = zero
+d (Sin a)       = (cos a) `mul` (d a)
+d (Cos a)       = (negate $ sin a) `mul` (d a)
+d (Exp a)       = (exp a) `mul` (d a)
 
 dd :: FunExp -> FunExp
 dd = d.d
 
-evalDD :: Transcendental a => FunExp -> (a -> Tri a)
+--evalDD :: Transcendental a => FunExp -> (a -> Tri a)
 evalDD expr = \a -> (f a, f' a, f'' a)
  where 
   f   = eval (expr)
