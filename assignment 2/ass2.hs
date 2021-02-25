@@ -32,13 +32,13 @@ eval (Exp a)    = \x -> exp (eval a x)
 --eval' :: Transcendental a => FunExp -> FunSem
 --eval'' = eval'.derive
 --eval'' = eval.derive.derive
-
-derive :: FunExp a -> FunExp a
-derive = error "todo"
+--
+--derive :: FunExp a -> FunExp a
+--derive = error "todo"
 
 data FunExp a where
-    Zero   :: FunExp a --bad
-    One    :: FunExp a --bad
+    Zero   :: FunExp a
+    One    :: FunExp a
     Con    :: (Transcendental a) => a -> FunExp a
     FunX   :: FunExp a
     Add    :: FunExp a -> FunExp a -> FunExp a
@@ -52,50 +52,55 @@ data FunExp a where
     Exp    :: FunExp a -> FunExp a
  
 deriving instance Show (FunExp REAL)
- 
+
+
 --type FunSem = (REAL -> REAL)
+-- ============== 1a ============== --
 
 {-
-By def. the homomorphism conserves the operation, in this case eval''. Thus if eval'' is a homomorphism,
-    then eval'' (f oplus g) == (eval'' f) oplus (eval'' g) for every operation oplus on the function 
-    expressions f and g. To prove that eval'' is not a homomorphism it suffices to observe that the second
-    derivative of the product of two functions is not the product of the two individual second derivatives.
-    This simply follows from the product rule. Note that this does not take into account the two domains,
-    but it is not neccissary due to the fact that the derivitaive is not liniar in multiplication.
+By def. the homomorphism conserves the operation. Thus if eval'' is a homomorphism,
+    then eval'' (f op1 g) == (eval'' f) op2 (eval'' g) for every operation op1 on the function 
+    expressions f and g. That is there exists a operation op2 in the semantic domain directly corresponding to the operation op1 in the syntactic domain. 
+    
+To prove that eval'' is not a homomorphism it suffices to observe that the second
+    derivative of the product of two functions cannot be constructed using only the value of the second derivative itself.
+    This simply follows from the product rule.
 
-H0 :: (a->b) -> a -> b -> Prop
-H0 eval'' funExp funSem =
-  (eval'' funExp) <==> funSem
-  
-H2 :: (a->b) -> (a->a->a) -> (b->b->b) -> Prop
-H0 <==> H2
-  
-if this is true, then the homomorphism be true for all constructors in FunExp
 
 H2 :: (a->b) -> (a->a->a) -> (b->b->b) -> Prop
-
-H2 eval'' (`Mul`) omul
+in this case
 H2 :: (FunExp->(R->R)) -> (FunExp->FunExp->FunExp) -> ((R->R)->(R->R)->(R->R)) -> Prop
-H2 :: (FunExp->FunSem) -> (FunExp->FunExp->FunExp) -> (FunSem->FunSem->FunSem) -> Prop
 
-H2 h f1 f2 
- = ∀x,y∈FunExp eval''(x `Mul` y) <==> omul (eval'' x) (eval'' y)
+H2 eval'' Mul omul
+ should hold if eval'' is a homomophism
 
-x = FunX 
-y = FunX `Add` (Con 1)
+H2 eval'' Mul omul
+ = ∀x,y∈FunExp $ eval''(x `Mul` y) <==> omul (eval'' x) (eval'' y)
 
-eval''(x `Mul` y) <==> omul (eval'' x) (eval'' y)
+example x,y where this is not true:
+    x = FunX 
+    y = FunX
 
-eval'' $ (FunX) `Mul` (FunX `Add` (Con 1)) <==> omul (\r -> 0) (\r -> 0)
-\r -> 2*r <==> \r -> 0
-which is false, hence statement H2 is false.
+    eval''(x `Mul` y) <==> omul (eval'' x) (eval'' y)d
+    
+    eval $ derive $ derive (x `Mul` y) <==> omul (eval'' x) (eval'' y)
+
+    eval $ derive $ derive $ FunX `Mul` FunX                           <==> omul (λr -> 0) (λr -> 0)
+    eval $ derive          $ Add (FunX `Mul` Con 1) (FunX `Mul` Con 1) <==> λr -> 0*0
+    eval $ derive          $ Add (FunX) (FunX)                         <==> λr -> 0
+    eval                   $ Add (Con 1) (Con 1)                       <==> λr -> 0
+    eval                   $ Con 2                                     <==> λr -> 0
+    λr -> 2                                                            <==> λr -> 0
+    
+    λr -> 2 <==> λr -> 0
+    which is false, hence statement H2 is false.
 -}
 
 -- ============== 1b ============== --
 
 type Tri a    = (a,a,a)
 type TriFun a = Tri (a -> a)    -- (a->a, a->a, a->a)
-type FunTri a = a -> Tri a      -- a -> (a,a,a)
+type FunTri a = a -> Tri a      -- a -> (a,a,a)         --why is not used for newton?
 
 class Additive a where
     zero   :: a
@@ -119,8 +124,6 @@ class Algebraic a => Transcendental a where
     sin    :: a -> a
     cos    :: a -> a
     exp    :: a -> a
- 
---dd :: Transcendental a => FunExp -> (Tri FunExp)
 
 instance Additive a => Additive (FunExp a) where
     zero   = Zero
@@ -218,6 +221,7 @@ evalDD expr a = (f a, f' a, f'' a)
 
 -- ============== 2a ============== --
 
+--reference unimplementable function
 newton :: (REAL -> REAL) -> REAL -> REAL -> REAL
 newton f ep x = 
     if (abs fx) < ep
@@ -230,13 +234,14 @@ newton f ep x =
         fx' = error "undefined"
         next = x - (fx/fx')
         
+--uneccesary function used for testing   
 newtonF :: FunExp REAL -> REAL -> REAL -> REAL
 newtonF f ep x = 
     if (abs fx) < ep
         then x
-        else if abs fx' /=  0
-            then newtonF f ep next
-            else newtonF f ep (x+ep)
+    else if abs fx' /=  0
+        then newtonF f ep next
+        else newtonF f ep (x+ep)
     where 
         fx  = eval f x
         fx' = eval (d f) x
@@ -278,7 +283,6 @@ test3 n x (y1,y2,y3) = (y1**n - x, n*y2**(n-1) - x, n*(n-1)*y3**(n-2) - x)
 --test1 x = x^2 − 1               -- two zeros, in −1 and 1
 --test2 = Prelude.sin             -- many, many zeros (n ∗ π)
 --test3 n x y = y^n − constTri x  -- test3 n x specifies the nth root of x
---    where constTri x = \_ -> (x,x,x)
 
 s0 = map (newtonTri test0 0.001) [-2.0, -1.5 .. 2.0]
 s1 = map (newtonTri test1 0.001) [-2.0, -1.5 .. 2.0]
@@ -297,7 +301,7 @@ optim :: (Tri REAL -> Tri REAL) -> REAL -> REAL -> Result
 optim f ep x
  | fx'' < 0  = Maxima ntr
  | fx'' > 0  = Minima ntr
- | otherwise = Dunno ntr >>> show fx''
+ | otherwise = Dunno ntr
     where 
         ntr = newtonTri helper ep x
         (fx,fx',fx'') = f (ntr, ntr, ntr)
