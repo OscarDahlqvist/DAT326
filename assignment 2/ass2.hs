@@ -15,8 +15,8 @@ eval (Zero)     = \x -> zero
 eval (One)      = \x -> one
 eval (Con c)    = \x -> c
 eval (FunX)     = \x -> x 
-eval (Add a b)  = \x -> eval a x `add` eval b x
-eval (Mul a b)  = \x -> eval a x `mul` eval b x
+eval (Add a b)  = \x -> eval a x ~+ eval b x
+eval (Mul a b)  = \x -> eval a x ~* eval b x
 eval (Negate a) = \x -> negate (eval a x)
 eval (Recip a)  = \x -> recip (eval a x)
 eval (Root a)   = \x -> root (eval a x)
@@ -71,21 +71,21 @@ H2 :: (a->b) -> (a->a->a) -> (b->b->b) -> Prop
 in this case
 H2 :: (FunExp->(R->R)) -> (FunExp->FunExp->FunExp) -> ((R->R)->(R->R)->(R->R)) -> Prop
 
-H2 eval'' Mul omul
+H2 eval'' Mul o(~*)
  should hold if eval'' is a homomophism
 
-H2 eval'' Mul omul
- = ∀x,y∈FunExp $ eval''(x `Mul` y) <==> omul (eval'' x) (eval'' y)
+H2 eval'' Mul o(~*)
+ = ∀x,y∈FunExp $ eval''(x `Mul` y) <==> o(~*) (eval'' x) (eval'' y)
 
 example x,y where this is not true:
     x = FunX 
     y = FunX
 
-    eval''(x `Mul` y) <==> omul (eval'' x) (eval'' y)d
+    eval''(x `Mul` y) <==> o(~*) (eval'' x) (eval'' y)d
     
-    eval $ derive $ derive (x `Mul` y) <==> omul (eval'' x) (eval'' y)
+    eval $ derive $ derive (x `Mul` y) <==> o(~*) (eval'' x) (eval'' y)
 
-    eval $ derive $ derive $ FunX `Mul` FunX                           <==> omul (λr -> 0) (λr -> 0)
+    eval $ derive $ derive $ FunX `Mul` FunX                           <==> o(~*) (λr -> 0) (λr -> 0)
     eval $ derive          $ Add (FunX `Mul` Con 1) (FunX `Mul` Con 1) <==> λr -> 0*0
     eval $ derive          $ Add (FunX) (FunX)                         <==> λr -> 0
     eval                   $ Add (Con 1) (Con 1)                       <==> λr -> 0
@@ -104,11 +104,11 @@ type FunTri a = a -> Tri a      -- a -> (a,a,a)         --why is not used for ne
 
 class Additive a where
     zero   :: a
-    add    :: a -> a -> a
+    (~+)    :: a -> a -> a
 
 class Multiplicative a where
     one    :: a
-    mul    :: a -> a -> a
+    (~*)    :: a -> a -> a
  
 class Additive a => AddGroup a where
     negate :: a -> a
@@ -127,10 +127,10 @@ class Algebraic a => Transcendental a where
 
 instance Additive a => Additive (FunExp a) where
     zero   = Zero
-    add    = Add
+    (~+)    = Add
 instance Multiplicative a => Multiplicative (FunExp a) where
     one    = One
-    mul    = Mul
+    (~*)    = Mul
 instance AddGroup a => AddGroup (FunExp a) where
     negate = Negate
 instance MulGroup a => MulGroup (FunExp a) where
@@ -145,10 +145,10 @@ instance Transcendental a => Transcendental (FunExp a) where
  
 instance Additive REAL where
     zero   = 0
-    add    = (+)
+    (~+)    = (+)
 instance Multiplicative REAL where
     one    = 1
-    mul    = (*)
+    (~*)    = (*)
 instance AddGroup REAL where
     negate = (zero-)
 instance MulGroup REAL where
@@ -160,19 +160,43 @@ instance Transcendental REAL where
     sin    = Prelude.sin
     cos    = Prelude.cos
     exp    = Prelude.exp
+	
+instance Additive a => Tri a
+	zero  = triZero
+	(~+)  = triAdd
+instance AddGroup a => Tri a
+	negate = triNegate
+instance Multiplicative a => Tri a
+	
+instance MulGroup a => Tri a
+
+instance Algebraic a => Tri a
+
+instance Transcendental a => Tri a
+
+triZero = (zero,zero,zero)
+triAdd (f,f',f'') (g,g',g'') = (f~+g, f'~+g', f''~+g'')
+triOne = (one, one, one)
+triMul (f,f',f'') (g,g',g'') = (f~*g, f'~*g + f~*g', f~*f'~*g'~*g' + f~*f''~*g'~*g +f~*f'~*g''~*g + f'~*f'~*g'~*g)
+triNegate (f,f',f'') = (negate f, negate f', negate f'')
+triRecip (f,f',f'') = error "totdo"
+
+-- d g(f(x)) = g'(f(x)) * f'(x)
+triRoot (f,f',f'') = (root f, (negate $ recip (f~*f))~*f')
+
 
 d :: Transcendental a => FunExp a -> FunExp a
 d (Con _)       = zero
 d (FunX)        = one
-d (Add a b)     = add (d a) (d b)
-d (Mul a b)     = add (a `mul` d b) (d a `mul` b)
+d (Add a b)     = (~+) (d a) (d b)
+d (Mul a b)     = (~+) (a ~* d b) (d a ~* b)
 d (Negate a)    = negate (d a)
-d (Recip a)     = (negate $ recip (a `mul` a)) `mul` (d a)                --1/f(x) = -¹/f(x)² * f'(x)
-d (Root a)      = (recip $ (root a `mul` (one `add` one))) `mul` (d a)    --f(x)¹ᐟ² = ⁻¹/(2f(x)) * f'(x)
+d (Recip a)     = (negate $ recip (a ~* a)) ~* (d a)                --1/f(x) = -¹/f(x)² * f'(x)
+d (Root a)      = (recip $ (root a ~* (one ~+ one))) ~* (d a)    --f(x)¹ᐟ² = ⁻¹/(2f(x)) * f'(x)
 d (Pi)          = zero
-d (Sin a)       = (cos a) `mul` (d a)
-d (Cos a)       = (negate $ sin a) `mul` (d a)
-d (Exp a)       = (exp a) `mul` (d a)
+d (Sin a)       = (cos a) ~* (d a)
+d (Cos a)       = (negate $ sin a) ~* (d a)
+d (Exp a)       = (exp a) ~* (d a)
 d _             = zero
 
 dd :: Transcendental a => FunExp a -> FunExp a
@@ -188,28 +212,28 @@ evalDD expr a = (f a, f' a, f'' a)
 -- ============== 1c ============== --
 
 {-
-  To prove that evalDD is a homomophism in the case of multiplication we need to prove the existance of
+  To prove that evalDD is a homomophism in the case of (~*)tiplication we need to prove the existance of
   a funtion:
 
-  muld :: Transcendental a => (a->a,a->a,a->a) -> (a->a,a->a,a->a) -> (a->a,a->a,a->a),
+  (~*)d :: Transcendental a => (a->a,a->a,a->a) -> (a->a,a->a,a->a) -> (a->a,a->a,a->a),
   
   such that
 
-  H2 = evalDD (mul f g) == muld (evalDD f) (evalDD g).
+  H2 = evalDD ((~*) f g) == (~*)d (evalDD f) (evalDD g).
 
-  Using the notation f' = d f, f'' = dd f (mutatis mutandis for g), add = +, mul = *, (...)*(...)= (...)*(...)
+  Using the notation f' = d f, f'' = dd f (mutatis mutandis for g), (~+) = +, (~*) = *, (...)*(...)= (...)*(...)
   we prove this by directly expanding the definition of our evalDD funtion:
 
-  evalDD (mul f g)  = (eval f*g, eval (f*g)', eval (f*g)'') = [one iter of product rule] =
+  evalDD ((~*) f g)  = (eval f*g, eval (f*g)', eval (f*g)'') = [one iter of product rule] =
   = (eval f*g, eval (f*g' + f'*g), eval (f*g' + f'*g)') = [derivative is linear and second iter of prod rule] =
   = (..., eval ((f*g')(f'*g)' + (f*g')'(f'*g)) = (..., eval ((f*g')(f'*g' + f''*g)
                                                  + (f*g'' + f'*g')(f'*g)) =
   = (..., eval (f*f'*g'*g' + f*f''*g'*g +f*f'*g''*g + f'*f'*g'*g)).
 
-  This shows that we can construct a function muld such that H2 is satisfied. Such a function
+  This shows that we can construct a function (~*)d such that H2 is satisfied. Such a function
   would be defined as:
 
-  muld f g = (f*g, f*g' + f'*g, f*f'*g'*g' + f*f''*g'*g +f*f'*g''*g + f'*f'*g'*g)
+  (~*)d f g = (f*g, f*g' + f'*g, f*f'*g'*g' + f*f''*g'*g +f*f'*g''*g + f'*f'*g'*g)
     where f   = fst f
           f'  = snd f
           f'' = trd f
