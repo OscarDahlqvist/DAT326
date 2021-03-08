@@ -5,8 +5,8 @@ import Debug.Trace
 
 -- ============== 1a ============== --
 
-import qualified Prelude (sin,cos,exp,pi)
-import Prelude hiding (recip,negate,sin,cos,exp,pi)
+import qualified Prelude (sin,cos,exp,pi,recip)
+import Prelude hiding (sin,cos,exp,pi,recip)
 
 type REAL = Double
 
@@ -17,7 +17,7 @@ eval (Con c)    = \x -> c
 eval (FunX)     = \x -> x 
 eval (Add a b)  = \x -> eval a x ~+ eval b x
 eval (Mul a b)  = \x -> eval a x ~* eval b x
-eval (Negate a) = \x -> negate (eval a x)
+eval (Negate a) = \x -> neg (eval a x)
 eval (Recip a)  = \x -> recip (eval a x)
 eval (Root a)   = \x -> root (eval a x)
 eval (Pi)       = \x -> pi
@@ -96,22 +96,39 @@ example x,y where this is not true:
     which is false, hence statement H2 is false.
 -}
 
+eval'' :: Transcendental a => FunExp a -> (a -> a)
+eval'' = eval . dd
+
+-- Test operators
+omul f g = \x -> (f x) ~* (g x) 
+oadd f g = \x -> (f x) ~+ (g x)
+
+type F a = a->a
+h2test :: (Transcendental b, Eq b) => (a -> F b) -> (a -> a -> a) -> (F b -> F b -> F b) -> a -> a -> b -> Bool
+h2test h f1 f2 e1 e2 x = (h (f1 e1 e2)) x == (f2 (h e1) (h e2)) x
+   
+ex1 = h2test eval'' Add oadd FunX FunX (two::REAL)
+ex2 = h2test eval'' Mul omul FunX FunX (two::REAL)
+
 -- ============== 1b ============== --
 
 type Tri a    = (a,a,a)
 type TriFun a = Tri (a -> a)    -- (a->a, a->a, a->a)
 type FunTri a = a -> Tri a      -- a -> (a,a,a)         --why is not used for newton?
 
+infixl 6 ~+ 
+infixl 7 ~*
+
 class Additive a where
     zero   :: a
-    (~+)    :: a -> a -> a
-
-class Multiplicative a where
-    one    :: a
-    (~*)    :: a -> a -> a
+    (~+)   :: a -> a -> a
  
 class Additive a => AddGroup a where
-    negate :: a -> a
+    neg    :: a -> a
+
+class AddGroup a => Multiplicative a where
+    one    :: a
+    (~*)   :: a -> a -> a
  
 class Multiplicative a => MulGroup a where
     recip  :: a -> a
@@ -132,7 +149,7 @@ instance Multiplicative a => Multiplicative (FunExp a) where
     one    = One
     (~*)    = Mul
 instance AddGroup a => AddGroup (FunExp a) where
-    negate = Negate
+    neg = Negate
 instance MulGroup a => MulGroup (FunExp a) where
     recip  = Recip
 instance Algebraic a => Algebraic (FunExp a) where
@@ -150,7 +167,7 @@ instance Multiplicative REAL where
     one    = 1
     (~*)    = (*)
 instance AddGroup REAL where
-    negate = (zero-)
+    neg = (zero-)
 instance MulGroup REAL where
     recip  = (one/)
 instance Algebraic REAL where
@@ -160,29 +177,96 @@ instance Transcendental REAL where
     sin    = Prelude.sin
     cos    = Prelude.cos
     exp    = Prelude.exp
-	
-instance Additive a => Tri a
-	zero  = triZero
-	(~+)  = triAdd
-instance AddGroup a => Tri a
-	negate = triNegate
-instance Multiplicative a => Tri a
-	
-instance MulGroup a => Tri a
+    
+instance Additive a => Additive(Tri a) where
+    zero  = triZero
+    (~+)  = triAdd
+instance AddGroup a => AddGroup(Tri a) where
+    neg   = triNegate
+instance Multiplicative a => Multiplicative(Tri a) where
+    one   = triOne
+    (~*)  = triMul    
+instance MulGroup a => MulGroup(Tri a) where
+    recip = triRecip
+instance Algebraic a => Algebraic(Tri a) where
+    root  = triRoot
+instance Transcendental a => Transcendental(Tri a) where
+    pi    = triPi
+    sin   = triSin
+    cos   = triCos
+    exp   = triExp
 
-instance Algebraic a => Tri a
+two,four :: Multiplicative a => a
+two = one ~+ one
+four = two ~+ two
 
-instance Transcendental a => Tri a
+triZero :: Additive a => Tri a 
+triZero = (zero, zero, zero)
 
-triZero = (zero,zero,zero)
+triAdd :: Additive a => Tri a -> Tri a -> Tri a 
 triAdd (f,f',f'') (g,g',g'') = (f~+g, f'~+g', f''~+g'')
-triOne = (one, one, one)
-triMul (f,f',f'') (g,g',g'') = (f~*g, f'~*g + f~*g', f~*f'~*g'~*g' + f~*f''~*g'~*g +f~*f'~*g''~*g + f'~*f'~*g'~*g)
-triNegate (f,f',f'') = (negate f, negate f', negate f'')
-triRecip (f,f',f'') = error "totdo"
+
+triOne :: Multiplicative a => Tri a 
+triOne = (one, zero, zero)
+
+triMul :: Multiplicative a => Tri a -> Tri a -> Tri a 
+triMul (f,f',f'') (g,g',g'') = (
+        f~*g,
+        f'~*g ~+ f~*g',
+        (f~*f'~*g'~*g') ~+ (f~*f''~*g'~*g) ~+ (f~*f'~*g''~*g) ~+ (f'~*f'~*g'~*g)
+    )
+    
+triNegate :: AddGroup a => Tri a -> Tri a
+triNegate (f,f',f'') = (neg f, neg f', neg f'')
+
+triRecip :: MulGroup a => Tri a -> Tri a
+triRecip (f, f', f'') = (
+        recip f, 
+        neg (recip (f~*f)) ~* f', 
+        neg (recip (f~*f)) ~* f'' ~+ ((recip (f~*f~*f)) ~* (two ~* f')) ~* f'
+    )
+
+triRoot :: Algebraic a => Tri a -> Tri a
+triRoot (f,f',f'') = (
+        (root f), 
+        (recip $ root f ~* two) ~* f', 
+        (recip $ root f ~* two) ~* f'' ~+ ((neg $ recip $ four ~* root f ~* f) ~* f') ~* f'
+    )
+    
+triPi :: Transcendental a => Tri a
+triPi = (pi, zero, zero)
+
+triSin :: Transcendental a => Tri a -> Tri a
+triSin (f,f',f'') = (
+        sin f, 
+        cos f ~* f', 
+        neg (sin f) ~*f' ~+ cos f~*f'' 
+    )
+    
+triCos :: Transcendental a => Tri a -> Tri a
+triCos (f,f',f'') = (
+        cos f, 
+        neg (sin f) ~* f', 
+        neg (cos f) ~* f' ~+ neg (sin f) ~* f'' 
+    )
+    
+triExp :: Transcendental a => Tri a -> Tri a
+triExp (f,f',f'') = (
+        exp f, 
+        exp f ~* f', 
+        exp f ~* f'' ~+ (exp f ~* f') ~* f'
+    )
+    
 
 -- d √(f(x)) = g'(f(x)) * f'(x)
-triRoot (f,f',f'') = (root f, (negate $ recip (f~*f))~*f')
+
+-- d g(f(x)) = g'(f(x)) * f'(x)
+--dd g(f(x)) = d (g'(f(x)) * f'(x))
+--           = d (g'(f) * f')
+--           = g'(f)*d f' + d g'(f)*f'
+--           = g'(f)*f''  + d g'(f)*f'
+--           = g'(f)*f''  + (g''(f) * f')*f'
+--           = g'(f)*f''  + (g''(f) * f')*f'
 
 
 d :: Transcendental a => FunExp a -> FunExp a
@@ -190,12 +274,12 @@ d (Con _)       = zero
 d (FunX)        = one
 d (Add a b)     = (~+) (d a) (d b)
 d (Mul a b)     = (~+) (a ~* d b) (d a ~* b)
-d (Negate a)    = negate (d a)
-d (Recip a)     = (negate $ recip (a ~* a)) ~* (d a)                --1/f(x) = -¹/f(x)² * f'(x)
-d (Root a)      = (recip $ (root a ~* (one ~+ one))) ~* (d a)    --f(x)¹ᐟ² = ⁻¹/(2f(x)) * f'(x)
+d (Negate a)    = neg (d a)
+d (Recip a)     = (neg $ recip (a ~* a)) ~* (d a)                --1/f(x) = -¹/f(x)² * f'(x)
+d (Root a)      = (recip $ (root a ~* two)) ~* (d a)    --f(x)¹ᐟ² = ⁻¹/(2f(x)) * f'(x)
 d (Pi)          = zero
 d (Sin a)       = (cos a) ~* (d a)
-d (Cos a)       = (negate $ sin a) ~* (d a)
+d (Cos a)       = (neg $ sin a) ~* (d a)
 d (Exp a)       = (exp a) ~* (d a)
 d _             = zero
 
