@@ -113,15 +113,12 @@ ex2 = h2test eval'' Mul omul FunX FunX (two::REAL)
 -- ============== 1b ============== --
 
 type Tri a    = (a,a,a)
-type TriFun a = Tri (a -> a)    -- (a->a, a->a, a->a)
-type FunTri a = a -> Tri a      -- a -> (a,a,a)         --why is not used for newton?
+type TriFun a = Tri (a -> a)  -- (a->a, a->a, a->a)
+type FunTri a = a -> Tri a    -- a -> (a,a,a)
 
-(~/) a b = a ~* recip b 
-(~^) a b = foldr (~*) one [a|_<-[1..b]]
+type Field a = (MulGroup a, AddGroup a)
 
-infixl 6 ~+ 
-infixl 7 ~*
-
+-- Class methods --
 class Additive a where
     zero   :: a
     (~+)   :: a -> a -> a
@@ -136,7 +133,7 @@ class AddGroup a => Multiplicative a where
 class Multiplicative a => MulGroup a where
     recip  :: a -> a
  
-class (MulGroup a, AddGroup a) => Algebraic a where
+class Field a => Algebraic a where
     root   :: a -> a
  
 class Algebraic a => Transcendental a where
@@ -144,15 +141,32 @@ class Algebraic a => Transcendental a where
     sin    :: a -> a
     cos    :: a -> a
     exp    :: a -> a
+    
+-- Class shorthand functions ------------------------------------------
+(~/) :: Transcendental a => a -> a -> a
+(~/) a b = a ~* recip b 
+(~-) :: Transcendental a => a -> a -> a
+(~-) a b = a ~+ neg b 
+(~^) :: Transcendental a => a -> Int -> a
+(~^) a b = foldr (~*) one [a|_<-[1..b]]
 
+-- Class infix --------------------------------------------------------
+infixl 6 ~+ 
+infixl 6 ~- 
+infixl 7 ~*
+infixl 7 ~/
+infixr 8 ~^
+
+-- Class Instances --
+-----------------------------------------------------------------------
 instance Additive a => Additive (FunExp a) where
     zero   = Zero
-    (~+)    = Add
+    (~+)   = Add
 instance Multiplicative a => Multiplicative (FunExp a) where
     one    = One
-    (~*)    = Mul
+    (~*)   = Mul
 instance AddGroup a => AddGroup (FunExp a) where
-    neg = Negate
+    neg    = Negate
 instance MulGroup a => MulGroup (FunExp a) where
     recip  = Recip
 instance Algebraic a => Algebraic (FunExp a) where
@@ -162,7 +176,7 @@ instance Transcendental a => Transcendental (FunExp a) where
     sin    = Sin
     cos    = Cos
     exp    = Exp
- 
+-----------------------------------------------------------------------
 instance Additive REAL where
     zero   = 0
     (~+)    = (+)
@@ -180,7 +194,7 @@ instance Transcendental REAL where
     sin    = Prelude.sin
     cos    = Prelude.cos
     exp    = Prelude.exp
-    
+-----------------------------------------------------------------------   
 instance Additive a => Additive(Tri a) where
     zero  = triZero
     (~+)  = triAdd
@@ -199,17 +213,20 @@ instance Transcendental a => Transcendental(Tri a) where
     cos   = triCos
     exp   = triExp
     
-type Field a = (MulGroup a, Multiplicative a, AddGroup a, Additive a)
-
-two,four :: Multiplicative a => a
+-----------------------------------------------------------------------
+two,four :: Field a => a
 two = one ~+ one
 four = two ~+ two
 
+-- Tri instance function definitons ----------------------------------
 triZero :: Additive a => Tri a 
 triZero = (zero, zero, zero)
 
 triAdd :: Additive a => Tri a -> Tri a -> Tri a 
 triAdd (f,f',f'') (g,g',g'') = (f~+g, f'~+g', f''~+g'')
+    
+triNegate :: AddGroup a => Tri a -> Tri a
+triNegate (f,f',f'') = (neg f, neg f', neg f'')
 
 triOne :: Multiplicative a => Tri a 
 triOne = (one, zero, zero)
@@ -218,24 +235,26 @@ triMul :: Multiplicative a => Tri a -> Tri a -> Tri a
 triMul (f,f',f'') (g,g',g'') = (
         f~*g,
         f'~*g ~+ f~*g',
-        (f~*f'~*g'~*g') ~+ (f~*f''~*g'~*g) ~+ (f~*f'~*g''~*g) ~+ (f'~*f'~*g'~*g)
+        (f~*f'~*g'~*g') 
+		 ~+ (f~*f''~*g'~*g) 
+		 ~+ (f~*f'~*g''~*g) 
+		 ~+ (f'~*f'~*g'~*g)
     )
-    
-triNegate :: AddGroup a => Tri a -> Tri a
-triNegate (f,f',f'') = (neg f, neg f', neg f'')
 
 triRecip :: MulGroup a => Tri a -> Tri a
 triRecip (f, f', f'') = (
         recip f, 
         neg (recip (f~*f)) ~* f', 
-        neg (recip (f~*f)) ~* f'' ~+ ((recip (f~*f~*f)) ~* (two ~* f')) ~* f'
+        neg (recip (f~*f)) ~* f'' 
+		 ~+ ((recip (f~*f~*f)) ~* (two ~* f')) ~* f'
     )
 
 triRoot :: Algebraic a => Tri a -> Tri a
 triRoot (f,f',f'') = (
         (root f), 
         (recip $ root f ~* two) ~* f', 
-        (recip $ root f ~* two) ~* f'' ~+ ((neg $ recip $ four ~* root f ~* f) ~* f') ~* f'
+        (recip $ root f ~* two) ~* f'' 
+		 ~+ ((neg $ recip $ four ~* root f ~* f) ~* f') ~* f'
     )
     
 triPi :: Transcendental a => Tri a
@@ -245,45 +264,35 @@ triSin :: Transcendental a => Tri a -> Tri a
 triSin (f,f',f'') = (
         sin f, 
         cos f ~* f', 
-        neg (sin f) ~*f' ~+ cos f~*f'' 
+        cos f ~* f'' 
+		 ~+ (neg (sin f) ~* f') ~* f'
     )
     
 triCos :: Transcendental a => Tri a -> Tri a
 triCos (f,f',f'') = (
         cos f, 
         neg (sin f) ~* f', 
-        neg (cos f) ~* f' ~+ neg (sin f) ~* f'' 
+        neg (cos f) ~* f'' 
+		 ~+ (neg (sin f) ~* f') ~* f'
     )
     
 triExp :: Transcendental a => Tri a -> Tri a
 triExp (f,f',f'') = (
         exp f, 
         exp f ~* f', 
-        exp f ~* f'' ~+ (exp f ~* f') ~* f'
+        exp f ~* f'' 
+		 ~+ (exp f ~* f') ~* f'
     )
-    
 
--- d √(f(x)) = g'(f(x)) * f'(x)
-
--- d g(f(x)) = g'(f(x)) * f'(x)
---dd g(f(x)) = d (g'(f(x)) * f'(x))
---           = d (g'(f) * f')
---           = g'(f)*d f' + d g'(f)*f'
---           = g'(f)*f''  + d g'(f)*f'
---           = g'(f)*f''  + (g''(f) * f')*f'
---           = g'(f)*f''  + (g''(f) * f')*f'
-
-
-
-
+-- Derivation ---------------------------------------------------------
 d :: Transcendental a => FunExp a -> FunExp a
 d (Con _)       = zero
 d (FunX)        = one
 d (Add a b)     = (~+) (d a) (d b)
 d (Mul a b)     = (~+) (a ~* d b) (d a ~* b)
 d (Negate a)    = neg (d a)
-d (Recip a)     = (neg $ recip (a ~* a)) ~* (d a)                --1/f(x) = -¹/f(x)² * f'(x)
-d (Root a)      = (recip $ (root a ~* two)) ~* (d a)    --f(x)¹ᐟ² = ¹/(2f(x)) * f'(x)
+d (Recip a)     = (neg $ recip (a ~* a)) ~* (d a)    --1/f(x) = -¹/f(x)² * f'(x)
+d (Root a)      = (recip $ (root a ~* two)) ~* (d a)  --f(x)¹ᐟ² = ¹/(2f(x)) * f'(x)
 d (Pi)          = zero
 d (Sin a)       = (cos a) ~* (d a)
 d (Cos a)       = (neg $ sin a) ~* (d a)
@@ -382,22 +391,23 @@ toTriSem expr = help
 
 -- ============== 2b ============== --
 
-test0 :: Tri REAL -> Tri REAL
+test0, test1, test2 :: Tri REAL -> Tri REAL
 test0 x = x~^2
-test1 x = x~^2
-test2 (a,b,c) = (Prelude.sin a, Prelude.cos a * b, 0-(Prelude.sin c))
-
+test1 x = x~^2 ~- one
+test2 x = sin x
 
 test3ex :: Tri REAL -> Tri REAL
 test3ex = test3 1 1
 
-test3 :: REAL -> REAL -> Tri REAL -> Tri REAL
-test3 n x (y1,y2,y3) = (y1**n - x, n*y2**(n-1) - x, n*(n-1)*y3**(n-2) - x)
+test3 :: Int -> REAL -> Tri REAL -> Tri REAL
+test3 n x y = y~^n ~- constTri x
+
+constTri x = (x, one, zero)
 
 --test0 x = x^2                   -- one (double) zero, in 0
 --test1 x = x^2 − 1               -- two zeros, in −1 and 1
---test2 = Prelude.sin             -- many, many zeros (n ∗ π)
---test3 n x y = y^n − constTri x  -- test3 n x specifies the nth root of x
+--test2 = sin                     -- many, many zeros (in n∗π for all n∈Z)
+--test3 n x y = y^n − constTri x  -- test3 n x specifies the nth roots of x
 
 s0 = map (newtonTri test0 0.001) [-2.0, -1.5 .. 2.0]
 s1 = map (newtonTri test1 0.001) [-2.0, -1.5 .. 2.0]
