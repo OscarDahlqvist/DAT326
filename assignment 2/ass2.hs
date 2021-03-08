@@ -71,21 +71,21 @@ H2 :: (a->b) -> (a->a->a) -> (b->b->b) -> Prop
 in this case
 H2 :: (FunExp->(R->R)) -> (FunExp->FunExp->FunExp) -> ((R->R)->(R->R)->(R->R)) -> Prop
 
-H2 eval'' Mul o(~*)
+H2 eval'' Mul omul
  should hold if eval'' is a homomophism
 
-H2 eval'' Mul o(~*)
- = ∀x,y∈FunExp $ eval''(x `Mul` y) <==> o(~*) (eval'' x) (eval'' y)
+H2 eval'' Mul omul
+ = ∀x,y∈FunExp $ eval''(x `Mul` y) <==> omul (eval'' x) (eval'' y)
 
 example x,y where this is not true:
     x = FunX 
     y = FunX
 
-    eval''(x `Mul` y) <==> o(~*) (eval'' x) (eval'' y)d
+    eval''(x `Mul` y) <==> omul (eval'' x) (eval'' y)d
     
-    eval $ derive $ derive (x `Mul` y) <==> o(~*) (eval'' x) (eval'' y)
+    eval $ derive $ derive (x `Mul` y) <==> omul (eval'' x) (eval'' y)
 
-    eval $ derive $ derive $ FunX `Mul` FunX                           <==> o(~*) (λr -> 0) (λr -> 0)
+    eval $ derive $ derive $ FunX `Mul` FunX                           <==> omul (λr -> 0) (λr -> 0)
     eval $ derive          $ Add (FunX `Mul` Con 1) (FunX `Mul` Con 1) <==> λr -> 0*0
     eval $ derive          $ Add (FunX) (FunX)                         <==> λr -> 0
     eval                   $ Add (Con 1) (Con 1)                       <==> λr -> 0
@@ -181,7 +181,7 @@ triMul (f,f',f'') (g,g',g'') = (f~*g, f'~*g + f~*g', f~*f'~*g'~*g' + f~*f''~*g'~
 triNegate (f,f',f'') = (negate f, negate f', negate f'')
 triRecip (f,f',f'') = error "totdo"
 
--- d g(f(x)) = g'(f(x)) * f'(x)
+-- d √(f(x)) = g'(f(x)) * f'(x)
 triRoot (f,f',f'') = (root f, (negate $ recip (f~*f))~*f')
 
 
@@ -219,21 +219,21 @@ evalDD expr a = (f a, f' a, f'' a)
   
   such that
 
-  H2 = evalDD ((~*) f g) == (~*)d (evalDD f) (evalDD g).
+  H2 = evalDD (mul f g) == muld (evalDD f) (evalDD g).
 
-  Using the notation f' = d f, f'' = dd f (mutatis mutandis for g), (~+) = +, (~*) = *, (...)*(...)= (...)*(...)
+  Using the notation f' = d f, f'' = dd f (mutatis mutandis for g), (~+) = +, mul = *, (...)*(...)= (...)*(...)
   we prove this by directly expanding the definition of our evalDD funtion:
 
-  evalDD ((~*) f g)  = (eval f*g, eval (f*g)', eval (f*g)'') = [one iter of product rule] =
+  evalDD (mul f g)  = (eval f*g, eval (f*g)', eval (f*g)'') = [one iter of product rule] =
   = (eval f*g, eval (f*g' + f'*g), eval (f*g' + f'*g)') = [derivative is linear and second iter of prod rule] =
   = (..., eval ((f*g')(f'*g)' + (f*g')'(f'*g)) = (..., eval ((f*g')(f'*g' + f''*g)
                                                  + (f*g'' + f'*g')(f'*g)) =
   = (..., eval (f*f'*g'*g' + f*f''*g'*g +f*f'*g''*g + f'*f'*g'*g)).
 
-  This shows that we can construct a function (~*)d such that H2 is satisfied. Such a function
+  This shows that we can construct a function muld such that H2 is satisfied. Such a function
   would be defined as:
 
-  (~*)d f g = (f*g, f*g' + f'*g, f*f'*g'*g' + f*f''*g'*g +f*f'*g''*g + f'*f'*g'*g)
+  muld f g = (f*g, f*g' + f'*g, f*f'*g'*g' + f*f''*g'*g +f*f'*g''*g + f'*f'*g'*g)
     where f   = fst f
           f'  = snd f
           f'' = trd f
