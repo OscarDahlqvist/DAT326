@@ -1,4 +1,4 @@
-{-# LANGUAGE GADTs, FlexibleContexts, FlexibleInstances, TypeSynonymInstances, StandaloneDeriving #-}
+{-# LANGUAGE GADTs, FlexibleContexts, FlexibleInstances, TypeSynonymInstances, StandaloneDeriving, ConstraintKinds #-}
 import Data.List
 import Debug.Trace
 
@@ -116,6 +116,9 @@ type Tri a    = (a,a,a)
 type TriFun a = Tri (a -> a)    -- (a->a, a->a, a->a)
 type FunTri a = a -> Tri a      -- a -> (a,a,a)         --why is not used for newton?
 
+(~/) a b = a ~* recip b 
+(~^) a b = foldr (~*) one [a|_<-[1..b]]
+
 infixl 6 ~+ 
 infixl 7 ~*
 
@@ -195,6 +198,8 @@ instance Transcendental a => Transcendental(Tri a) where
     sin   = triSin
     cos   = triCos
     exp   = triExp
+    
+type Field a = (MulGroup a, Multiplicative a, AddGroup a, Additive a)
 
 two,four :: Multiplicative a => a
 two = one ~+ one
@@ -269,6 +274,8 @@ triExp (f,f',f'') = (
 --           = g'(f)*f''  + (g''(f) * f')*f'
 
 
+
+
 d :: Transcendental a => FunExp a -> FunExp a
 d (Con _)       = zero
 d (FunX)        = one
@@ -276,7 +283,7 @@ d (Add a b)     = (~+) (d a) (d b)
 d (Mul a b)     = (~+) (a ~* d b) (d a ~* b)
 d (Negate a)    = neg (d a)
 d (Recip a)     = (neg $ recip (a ~* a)) ~* (d a)                --1/f(x) = -¹/f(x)² * f'(x)
-d (Root a)      = (recip $ (root a ~* two)) ~* (d a)    --f(x)¹ᐟ² = ⁻¹/(2f(x)) * f'(x)
+d (Root a)      = (recip $ (root a ~* two)) ~* (d a)    --f(x)¹ᐟ² = ¹/(2f(x)) * f'(x)
 d (Pi)          = zero
 d (Sin a)       = (cos a) ~* (d a)
 d (Cos a)       = (neg $ sin a) ~* (d a)
@@ -299,7 +306,7 @@ evalDD expr a = (f a, f' a, f'' a)
   To prove that evalDD is a homomophism in the case of (~*)tiplication we need to prove the existance of
   a funtion:
 
-  (~*)d :: Transcendental a => (a->a,a->a,a->a) -> (a->a,a->a,a->a) -> (a->a,a->a,a->a),
+  muld :: Transcendental a => (a->a,a->a,a->a) -> (a->a,a->a,a->a) -> (a->a,a->a,a->a),
   
   such that
 
@@ -376,9 +383,9 @@ toTriSem expr = help
 -- ============== 2b ============== --
 
 test0 :: Tri REAL -> Tri REAL
-test0 (a,b,c) = (a^2,   2*b,2)
-test1 (a,b,c) = (a^2-1, 2*b,2)
-test2 (a,b,c) = (Prelude.sin a, Prelude.cos b, 0-(Prelude.sin c))
+test0 x = x~^2
+test1 x = x~^2
+test2 (a,b,c) = (Prelude.sin a, Prelude.cos a * b, 0-(Prelude.sin c))
 
 
 test3ex :: Tri REAL -> Tri REAL
