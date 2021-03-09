@@ -236,9 +236,9 @@ triMul (f,f',f'') (g,g',g'') = (
         f~*g,
         f'~*g ~+ f~*g',
         (f~*f'~*g'~*g') 
-		 ~+ (f~*f''~*g'~*g) 
-		 ~+ (f~*f'~*g''~*g) 
-		 ~+ (f'~*f'~*g'~*g)
+         ~+ (f~*f''~*g'~*g) 
+         ~+ (f~*f'~*g''~*g) 
+         ~+ (f'~*f'~*g'~*g)
     )
 
 triRecip :: MulGroup a => Tri a -> Tri a
@@ -246,7 +246,7 @@ triRecip (f, f', f'') = (
         recip f, 
         neg (recip (f~*f)) ~* f', 
         neg (recip (f~*f)) ~* f'' 
-		 ~+ ((recip (f~*f~*f)) ~* (two ~* f')) ~* f'
+         ~+ ((recip (f~*f~*f)) ~* (two ~* f')) ~* f'
     )
 
 triRoot :: Algebraic a => Tri a -> Tri a
@@ -254,7 +254,7 @@ triRoot (f,f',f'') = (
         (root f), 
         (recip $ root f ~* two) ~* f', 
         (recip $ root f ~* two) ~* f'' 
-		 ~+ ((neg $ recip $ four ~* root f ~* f) ~* f') ~* f'
+         ~+ ((neg $ recip $ four ~* root f ~* f) ~* f') ~* f'
     )
     
 triPi :: Transcendental a => Tri a
@@ -265,7 +265,7 @@ triSin (f,f',f'') = (
         sin f, 
         cos f ~* f', 
         cos f ~* f'' 
-		 ~+ (neg (sin f) ~* f') ~* f'
+         ~+ (neg (sin f) ~* f') ~* f'
     )
     
 triCos :: Transcendental a => Tri a -> Tri a
@@ -273,7 +273,7 @@ triCos (f,f',f'') = (
         cos f, 
         neg (sin f) ~* f', 
         neg (cos f) ~* f'' 
-		 ~+ (neg (sin f) ~* f') ~* f'
+         ~+ (neg (sin f) ~* f') ~* f'
     )
     
 triExp :: Transcendental a => Tri a -> Tri a
@@ -281,7 +281,7 @@ triExp (f,f',f'') = (
         exp f, 
         exp f ~* f', 
         exp f ~* f'' 
-		 ~+ (exp f ~* f') ~* f'
+         ~+ (exp f ~* f') ~* f'
     )
 
 -- Derivation ---------------------------------------------------------
