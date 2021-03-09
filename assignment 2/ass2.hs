@@ -327,14 +327,15 @@ evalDD expr a = (f a, f' a, f'' a)
 
   evalDD (mul f g)  = (eval f*g, eval (f*g)', eval (f*g)'') = [one iter of product rule] =
   = (eval f*g, eval (f*g' + f'*g), eval (f*g' + f'*g)') = [derivative is linear and second iter of prod rule] =
-  = (..., eval ((f*g')(f'*g)' + (f*g')'(f'*g)) = (..., eval ((f*g')(f'*g' + f''*g)
-                                                 + (f*g'' + f'*g')(f'*g)) =
-  = (..., eval (f*f'*g'*g' + f*f''*g'*g +f*f'*g''*g + f'*f'*g'*g)).
+  = (..., eval ((f''*g + f'*g') + (f'*g' + f*g'')) =
+  
+  = (..., eval (f''*g + f'*g' + f'*g' + f*g'')).
+  = (eval f*g, eval (f*g' + f'*g) eval (f''*g + f'*g' + f'*g' + f*g'')).
 
   This shows that we can construct a function muld such that H2 is satisfied. Such a function
   would be defined as:
 
-  muld f g = (f*g, f*g' + f'*g, f*f'*g'*g' + f*f''*g'*g +f*f'*g''*g + f'*f'*g'*g)
+  muld f g = (f*g, f*g' + f'*g, f''*g + f'*g' + f'*g' + f*g'')
     where f   = fst f
           f'  = snd f
           f'' = trd f
@@ -428,12 +429,12 @@ data Result where
     
 optim :: (Tri REAL -> Tri REAL) -> REAL -> REAL -> Result
 optim f ep x
- | fx'' < 0  = Maxima ntr
- | fx'' > 0  = Minima ntr
- | otherwise = Dunno ntr
+ | fx'' < 0  = Maxima newtonFound
+ | fx'' > 0  = Minima newtonFound
+ | otherwise = Dunno newtonFound
     where 
-        ntr = newtonTri helper ep x
-        (fx,fx',fx'') = f (ntr, ntr, ntr)
+        newtonFound = newtonTri helper ep x
+        (fx,fx',fx'') = f (newtonFound, 1, 0)
         helper (a,b,c) = (fb', fc'', error "undefined")
             where (fa,fb',fc'') = f (a,b,c)
 
