@@ -376,8 +376,8 @@ newtonF f ep x =
 newtonTri :: (Tri REAL -> Tri REAL) -> REAL -> REAL -> REAL
 newtonTri f ep x = 
     if (abs fx) < ep
-        then x
-    else if abs fx' /=  0
+        then x 
+    else if abs fx' /= 0
         then newtonTri f ep next
         else newtonTri f ep (x+ep)
     where 
@@ -433,10 +433,14 @@ optim f ep x
  | fx'' > 0  = Minima newtonFound
  | otherwise = Dunno newtonFound
     where 
-        newtonFound = newtonTri helper ep x
+        newtonFound = newtonTri badDerF ep x
         (fx,fx',fx'') = f (newtonFound, 1, 0)
-        helper (a,b,c) = (fb', fc'', error "undefined")
-            where (fa,fb',fc'') = f (a,b,c)
+        
+        badDerF :: (Tri REAL -> Tri REAL)
+        badDerF (x,1,0) = (fx', fx'', error "undefined")
+            where
+                (fx,fx',fx'') = f (x,1,0)
+                
 
 
 
@@ -444,10 +448,7 @@ optim f ep x
 
 
 
-
-{-
 (>>>) :: a -> String -> a
 (>>>) a str = (trace str a)
 debugged :: Show a => a -> a
 debugged a = (trace (">>>"++show(a)) a)
--}
