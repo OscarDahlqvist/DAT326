@@ -107,8 +107,9 @@ type F a = a->a
 h2test :: (Transcendental b, Eq b) => (a -> F b) -> (a -> a -> a) -> (F b -> F b -> F b) -> a -> a -> b -> Bool
 h2test h f1 f2 e1 e2 x = (h (f1 e1 e2)) x == (f2 (h e1) (h e2)) x
    
-ex1 = h2test eval'' Add oadd FunX FunX (two::REAL)
-ex2 = h2test eval'' Mul omul FunX FunX (two::REAL)
+ex1 = h2test eval'' Add oadd FunX FunX (two::REAL) --the homomophism does hold
+ex2 = h2test eval'' Mul omul One  One  (two::REAL) --the homomophism does hold
+ex3 = h2test eval'' Mul omul FunX FunX (two::REAL) --the homomophism does not hold
 
 -- ============== 1b ============== --
 
@@ -235,10 +236,10 @@ triMul :: Multiplicative a => Tri a -> Tri a -> Tri a
 triMul (f,f',f'') (g,g',g'') = (
         f~*g,
         f'~*g ~+ f~*g',
-        (f~*f'~*g'~*g') 
-         ~+ (f~*f''~*g'~*g) 
-         ~+ (f~*f'~*g''~*g) 
-         ~+ (f'~*f'~*g'~*g)
+        f''~*g 
+         ~+ f'~*g' 
+         ~+ f'~*g' 
+         ~+ f~*g''
     )
 
 triRecip :: MulGroup a => Tri a -> Tri a
@@ -312,7 +313,7 @@ evalDD expr a = (f a, f' a, f'' a)
 -- ============== 1c ============== --
 
 {-
-  To prove that evalDD is a homomophism in the case of (~*)tiplication we need to prove the existance of
+  To prove that evalDD is a homomophism in the case of multiplication we need to prove the existance of
   a funtion:
 
   muld :: Transcendental a => (a->a,a->a,a->a) -> (a->a,a->a,a->a) -> (a->a,a->a,a->a),
@@ -379,7 +380,7 @@ newtonTri f ep x =
         then newtonTri f ep next
         else newtonTri f ep (x+ep)
     where 
-        (fx,fx',fx'') = f (x,x,x)
+        (fx,fx',fx'') = f (x,1,0)
         next = x - (fx/fx')
         
 toTriSem :: FunExp REAL -> (Tri REAL -> Tri REAL)
@@ -401,6 +402,9 @@ test3ex = test3 1 1
 
 test3 :: Int -> REAL -> Tri REAL -> Tri REAL
 test3 n x y = y~^n ~- constTri x
+
+test4 :: Tri REAL -> Tri REAL
+test4 x = x~^3
 
 constTri x = (x, one, zero)
 
