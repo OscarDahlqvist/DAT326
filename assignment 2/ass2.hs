@@ -64,36 +64,53 @@ By def. the homomorphism conserves the operation. Thus if eval'' is a homomorphi
     
 To prove that eval'' is not a homomorphism it suffices to observe that the second
     derivative of the product of two functions cannot be constructed using only the value of the second derivative itself.
-    This simply follows from the product rule.
+    This simply follows from the product rule, i.e. (f*g)'' = f''*g + f'*g' + f'*g' + f*g''. We thus need f, g, f', g' and f'', g'' 
+    to be able evaluate (f*g)'', which is not avilable when doing eval'' f.
 
 
 H2 :: (a->b) -> (a->a->a) -> (b->b->b) -> Prop
-in this case
 H2 :: (FunExp->(R->R)) -> (FunExp->FunExp->FunExp) -> ((R->R)->(R->R)->(R->R)) -> Prop
 
-H2 eval'' Mul omul
- should hold if eval'' is a homomophism
+H2 eval'' Mul muld
+ should hold if eval'' is a homomophism. Is it possible to define muld?
 
-H2 eval'' Mul omul
- = ∀x,y∈FunExp $ eval''(x `Mul` y) <==> omul (eval'' x) (eval'' y)
+H2 eval'' Mul muld
+ = ∀x,y∈FunExp $ eval''(x `Mul` y) == muld (eval'' x) (eval'' y)
 
-example x,y where this is not true:
-    x = FunX 
-    y = FunX
+Proof that muld does not exist:
 
-    eval''(x `Mul` y) <==> omul (eval'' x) (eval'' y)d
-    
-    eval $ derive $ derive (x `Mul` y) <==> omul (eval'' x) (eval'' y)
+	We assume muld exist:
+	
+    eval''(x `Mul` y) == muld (eval'' x) (eval'' y)
+	
+	P1:
+    let x = FunX 
+    let y = FunX	
 
-    eval $ derive $ derive $ FunX `Mul` FunX                           <==> omul (λr -> 0) (λr -> 0)
-    eval $ derive          $ Add (FunX `Mul` Con 1) (FunX `Mul` Con 1) <==> λr -> 0*0
-    eval $ derive          $ Add (FunX) (FunX)                         <==> λr -> 0
-    eval                   $ Add (Con 1) (Con 1)                       <==> λr -> 0
-    eval                   $ Con 2                                     <==> λr -> 0
-    λr -> 2                                                            <==> λr -> 0
-    
-    λr -> 2 <==> λr -> 0
-    which is false, hence statement H2 is false.
+    eval $ derive $ derive (x `Mul` y)                                 == muld (eval'' x) (eval'' y)
+
+    eval $ derive $ derive $ FunX `Mul` FunX                           == muld (λr -> 0) (λr -> 0)
+    eval $ derive          $ Add (FunX `Mul` Con 1) (FunX `Mul` Con 1) == muld (λr -> 0) (λr -> 0)
+    eval $ derive          $ Add (FunX) (FunX)                         == muld (λr -> 0) (λr -> 0)
+    eval                   $ Add (Con 1) (Con 1)                       == muld (λr -> 0) (λr -> 0)
+    eval                   $ Con 2                                     == muld (λr -> 0) (λr -> 0)
+    λr -> 2                                                            == muld (λr -> 0) (λr -> 0)
+	
+	this means (muld (λr -> 0) (λr -> 0)) MUST = λr -> 2
+	
+	P2:
+	x = Con 0
+	y = Con 0
+	
+	eval $ derive $ derive $ Con 0 `Mul` Con 0  == muld (eval'' x) (eval'' y)
+	eval $ derive $ derive $ Con 0              == muld (λr -> 0) (λr -> 0)
+	eval $ Con 0                                == muld (λr -> 0) (λr -> 0)
+	λr -> 0                                     == muld (λr -> 0) (λr -> 0)
+	
+	muld (λr -> 0) (λr -> 0) = (λr -> 0) = (λr -> 2)
+	
+	since (λr -> 0) != (λr -> 2) our assumption that muld exists is FALSE.
+	QED.	
 -}
 
 eval'' :: Transcendental a => FunExp a -> (a -> a)
@@ -437,12 +454,10 @@ optim f ep x
         (fx,fx',fx'') = f (newtonFound, 1, 0)
         
         badDerF :: (Tri REAL -> Tri REAL)
-        badDerF (x,1,0) = (fx', fx'', error "undefined")
+        badDerF (p,1,0) = (fp', fp'', error "undefined")
             where
-                (fx,fx',fx'') = f (x,1,0)
-        -- badDerF works for (_, !=1, !=0) too, but we dont  
-        -- want a general function.
-                
+                (fp,fp',fp'') = f (p,1,0)
+
 
 
 
