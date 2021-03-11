@@ -440,6 +440,8 @@ optim f ep x
         badDerF (x,1,0) = (fx', fx'', error "undefined")
             where
                 (fx,fx',fx'') = f (x,1,0)
+        -- badDerF works for (_, !=1, !=0) too, but we dont  
+        -- want a general function.
                 
 
 
